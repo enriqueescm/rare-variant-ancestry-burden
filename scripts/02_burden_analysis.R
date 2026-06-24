@@ -63,23 +63,37 @@ df_func %>%
   as.data.frame() %>%
   print()
 
-  # ── 7. Calculate burden per gene per ancestry ─────────────────
-# Burden = sum of rare functional allele counts (AC)
-#          normalized by total allele number (AN)
-# This gives us: expected rare functional variants per chromosome
-# Units: variants per 10,000 chromosomes (x10^4 for readability)
+# ── 7. Calculate burden per gene per ancestry ─────────────────
+# Two versions:
+# - burden_all: all ancestries with AN > 0 (for heatmap)
+# - burden_filtered: AN >= 10,000 only (for demographic scatter)
 
-burden <- df_func %>%
-  filter(an >= 10000) %>%        # minimum coverage threshold
+burden_all <- df_func %>%
+  filter(an > 0) %>%
   group_by(gene, ancestry) %>%
   summarise(
-    total_ac    = sum(ac, na.rm = TRUE),    # total rare functional alleles
-    mean_an     = mean(an, na.rm = TRUE),   # mean coverage (proxy for sample size)
-    n_variants  = n_distinct(variant_id),   # unique variants contributing
-    burden_raw  = total_ac / mean_an,       # raw burden
-    burden_1e4  = burden_raw * 1e4,         # scaled per 10,000 chromosomes
+    total_ac   = sum(ac, na.rm = TRUE),
+    mean_an    = mean(an, na.rm = TRUE),
+    n_variants = n_distinct(variant_id),
+    burden_raw = total_ac / mean_an,
+    burden_1e4 = burden_raw * 1e4,
     .groups = "drop"
   )
+
+burden_filtered <- df_func %>%
+  filter(an >= 10000) %>%
+  group_by(gene, ancestry) %>%
+  summarise(
+    total_ac   = sum(ac, na.rm = TRUE),
+    mean_an    = mean(an, na.rm = TRUE),
+    n_variants = n_distinct(variant_id),
+    burden_raw = total_ac / mean_an,
+    burden_1e4 = burden_raw * 1e4,
+    .groups = "drop"
+  )
+
+# Use burden_all as default for downstream steps
+burden <- burden_all
 
 cat("\nBurden summary (top 20 gene x ancestry combinations):\n")
 burden %>%
@@ -118,7 +132,7 @@ burden <- burden %>%
   mutate(ancestry_label = ancestry_labels[ancestry])
 
 # ── 10. Save processed data ───────────────────────────────────
-write_tsv(burden, "data/processed/burden_by_gene_ancestry.tsv")
+write_tsv(burden_filtered, "data/processed/burden_by_gene_ancestry.tsv")
 cat(sprintf("\nBurden table saved: %s gene x ancestry combinations\n",
             nrow(burden)))
 
@@ -317,7 +331,7 @@ ne_data <- tibble(
 )
 
 # Calculate mean burden per ancestry across all genes
-mean_burden <- burden %>%
+mean_burden <- burden_filtered %>%
   filter(ancestry %in% ne_data$ancestry) %>%
   group_by(ancestry) %>%
   summarise(
