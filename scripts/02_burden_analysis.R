@@ -197,3 +197,103 @@ ggsave(
 )
 
 cat("\nHeatmap saved: figures/01_burden_heatmap.png\n")
+
+# ── 12. Ancestry-specific variants: lollipop plot ─────────────
+# Define "ancestry-specific" as: variant observed in only 1 ancestry group
+# with AC > 0, among all ancestry groups with sufficient coverage (AN > 1000)
+
+# Step 1: pivot to wide format — one row per variant
+ancestry_specific <- df_func %>%
+  filter(an > 1000) %>%                         # only well-covered ancestries
+  group_by(gene, variant_id, ancestry) %>%
+  summarise(ac = sum(ac), .groups = "drop") %>%
+  group_by(gene, variant_id) %>%
+  summarise(
+    n_ancestries_with_ac = sum(ac > 0),          # how many ancestries carry it
+    dominant_ancestry    = ancestry[which.max(ac)],
+    max_ac               = max(ac),
+    .groups = "drop"
+  ) %>%
+  filter(n_ancestries_with_ac == 1)              # strictly ancestry-specific
+
+cat(sprintf("\nAncestry-specific variants: %s\n", nrow(ancestry_specific)))
+
+# Step 2: get mean AN per gene per ancestry for normalization
+an_per_ancestry <- df_func %>%
+  filter(an > 1000) %>%
+  group_by(gene, ancestry) %>%
+  summarise(mean_an = mean(an), .groups = "drop")
+
+# Step 3: count specific variants per gene per ancestry, normalized
+lollipop_data <- ancestry_specific %>%
+  left_join(module_map, by = "gene") %>%
+  count(gene, dominant_ancestry, module, name = "n_specific") %>%
+  left_join(an_per_ancestry,
+            by = c("gene", "dominant_ancestry" = "ancestry")) %>%
+  filter(dominant_ancestry %in% ancestry_order) %>%
+  mutate(
+    # Normalize: specific variants per 10,000 chromosomes
+    n_specific_norm = (n_specific / mean_an) * 1e4,
+    ancestry_label  = ancestry_labels_full[dominant_ancestry],
+    gene            = factor(gene, levels = gene_order),
+    dominant_ancestry = factor(dominant_ancestry, levels = ancestry_order)
+  )
+
+cat("\nNormalized ancestry-specific variants (top 20):\n")
+lollipop_data %>%
+  arrange(desc(n_specific_norm)) %>%
+  head(20) %>%
+  select(gene, dominant_ancestry, n_specific, mean_an, n_specific_norm) %>%
+  as.data.frame() %>%
+  print()
+
+# Step 4: plot normalized
+p_lollipop <- lollipop_data %>%
+  ggplot(aes(x = n_specific_norm, y = gene, color = dominant_ancestry)) +
+  geom_segment(aes(x = 0, xend = n_specific_norm, y = gene, yend = gene),
+               linewidth = 0.6, alpha = 0.6) +
+  geom_point(size = 3.5, alpha = 0.9) +
+  facet_grid(module ~ ., scales = "free_y", space = "free_y") +
+  scale_color_manual(
+    values = c(
+      afr = "#e94560",
+      ami = "#a8dadc",
+      amr = "#f4a261",
+      asj = "#9b5de5",
+      eas = "#00b4d8",
+      fin = "#06d6a0",
+      mid = "#ffd166",
+      nfe = "#457b9d",
+      sas = "#f77f00"
+    ),
+    labels = ancestry_labels_full,
+    name   = "Ancestry"
+  ) +
+  labs(
+    title    = "Ancestry-Specific Rare Functional Variants (Normalized)",
+    subtitle = "Variants present in exactly one ancestry | per 10,000 chromosomes | gnomAD v4",
+    x        = "Ancestry-specific variants per 10,000 chromosomes",
+    y        = NULL,
+    caption  = "Normalized by mean AN per gene per ancestry to correct for sample size differences"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.y      = element_text(size = 9, face = "italic"),
+    strip.text.y     = element_text(angle = 0, face = "bold", size = 8),
+    strip.background = element_rect(fill = "#f0f0f0", color = NA),
+    legend.position  = "right",
+    plot.title       = element_text(face = "bold", size = 13),
+    plot.subtitle    = element_text(size = 9, color = "grey40"),
+    plot.caption     = element_text(size = 7, color = "grey60"),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave(
+  "figures/02_ancestry_specific_lollipop.png",
+  plot   = p_lollipop,
+  width  = 10,
+  height = 8,
+  dpi    = 300
+)
+
+cat("\nLollipop plot saved: figures/02_ancestry_specific_lollipop.png\n")
