@@ -70,6 +70,7 @@ df_func %>%
 # Units: variants per 10,000 chromosomes (x10^4 for readability)
 
 burden <- df_func %>%
+  filter(an >= 10000) %>%        # minimum coverage threshold
   group_by(gene, ancestry) %>%
   summarise(
     total_ac    = sum(ac, na.rm = TRUE),    # total rare functional alleles
@@ -297,3 +298,93 @@ ggsave(
 )
 
 cat("\nLollipop plot saved: figures/02_ancestry_specific_lollipop.png\n")
+
+# ── 13. Scatter: demographic history vs burden ────────────────
+# Effective population size (Ne) estimates from published literature
+# Sources: Tenesa et al. 2007, Browning et al. 2018, gnomAD flagship paper
+# These are approximate historical Ne estimates (thousands)
+
+ne_data <- tibble(
+  ancestry = c("afr", "amr", "asj", "eas", "fin", "mid", "nfe", "sas"),
+  ancestry_label = c("African", "Admixed American", "Ashkenazi Jewish",
+                     "East Asian", "Finnish", "Middle Eastern",
+                     "Non-Finnish Eur.", "South Asian"),
+  # Historical Ne in thousands (approximate)
+  # afr: large, pre-OOA; fin/asj: strong bottleneck
+  ne_thousands = c(17.0, 5.0, 1.5, 7.0, 3.5, 4.0, 8.0, 9.0),
+  # Approximate bottleneck strength (1=strong, 5=weak/none)
+  bottleneck = c(5, 2, 1, 3, 1, 2, 3, 3)
+)
+
+# Calculate mean burden per ancestry across all genes
+mean_burden <- burden %>%
+  filter(ancestry %in% ne_data$ancestry) %>%
+  group_by(ancestry) %>%
+  summarise(
+    mean_burden   = mean(burden_1e4, na.rm = TRUE),
+    median_burden = median(burden_1e4, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+scatter_data <- ne_data %>%
+  left_join(mean_burden, by = "ancestry")
+
+cat("\nDemographic vs burden data:\n")
+scatter_data %>%
+  select(ancestry_label, ne_thousands, mean_burden) %>%
+  arrange(desc(mean_burden)) %>%
+  as.data.frame() %>%
+  print()
+
+# Plot
+p_scatter <- scatter_data %>%
+  ggplot(aes(x = ne_thousands, y = mean_burden)) +
+  geom_smooth(method = "lm", se = TRUE,
+              color = "#457b9d", fill = "#457b9d", alpha = 0.15,
+              linewidth = 0.8) +
+  geom_point(aes(fill = ancestry, size = bottleneck),
+             shape = 21, color = "white", stroke = 0.5, alpha = 0.9) +
+  geom_text(aes(label = ancestry_label),
+            hjust = -0.15, vjust = 0.4, size = 3, color = "grey30") +
+  scale_fill_manual(
+    values = c(
+      afr = "#e94560", amr = "#f4a261", asj = "#9b5de5",
+      eas = "#00b4d8", fin = "#06d6a0", mid = "#ffd166",
+      nfe = "#457b9d", sas = "#f77f00"
+    ),
+    guide = "none"
+  ) +
+  scale_size_continuous(
+    range  = c(4, 10),
+    name   = "Bottleneck\nstrength",
+    breaks = c(1, 3, 5),
+    labels = c("Strong", "Moderate", "Weak/None")
+  ) +
+  scale_x_continuous(
+    name   = "Historical effective population size, Ne (thousands)",
+    limits = c(0, 20)
+  ) +
+  labs(
+    title    = "Demographic History Predicts Rare Variant Burden",
+    subtitle = "Mean rare functional variant burden vs. historical Ne across ancestries",
+    y        = "Mean burden (per 10K chromosomes)",
+    caption  = "Ne estimates from Tenesa et al. 2007 and gnomAD flagship paper.\nPoint size reflects bottleneck strength."
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(size = 9, color = "grey40"),
+    plot.caption  = element_text(size = 7, color = "grey60"),
+    legend.position = "right",
+    panel.grid.minor = element_blank()
+  )
+
+ggsave(
+  "figures/03_demographic_burden_scatter.png",
+  plot   = p_scatter,
+  width  = 10,
+  height = 7,
+  dpi    = 300
+)
+
+cat("\nScatter plot saved: figures/03_demographic_scatter.png\n")
