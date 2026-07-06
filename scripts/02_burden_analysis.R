@@ -1,10 +1,24 @@
 # 02_burden_analysis.R
 # Ancestry-stratified rare variant burden analysis
 # gnomAD v4 | 15 candidate genes | 3 biological modules
+#
+# METHODOLOGICAL NOTES:
+# 1. Burden = Σ(AC) / max(AN) × 10,000
+#    max(AN) approximates the total callable chromosomes for the gene
+#    in that ancestry, avoiding downward bias from low-coverage variants
+# 2. MAF < 1% filter applied per-ancestry (not globally) — intentional:
+#    we want variants rare IN that ancestry, not globally rare variants
+# 3. Primary analysis uses LoF HC only (LOFTEE high-confidence).
+#    Missense excluded: without CADD filtering they inflate burden
+#    with likely benign variants (Pearson r=0.46 vs LoF-only).
+# 4. TLR10 excluded from burden figures: no LoF HC variants in gnomAD v4.
+# 5. ACKR1 retained in analysis but has 0 LoF HC burden across all
+#    ancestries — documented as a constraint-consistent finding.
 
 # ── 1. Libraries ──────────────────────────────────────────────
 library(tidyverse)
 library(data.table)
+library(ggplot2)
 
 # ── 2. Load data ──────────────────────────────────────────────
 cat("Loading data...\n")
@@ -29,13 +43,18 @@ df_clean <- df %>%
     an        > 0
   )
 
-# ── 4. Filter: rare variants only (AF < 1%) ───────────────────
+# ── 4. Filter: rare variants only (AF < 1% per ancestry) ──────
 df_rare <- df_clean %>%
   filter(af < 0.01)
 
-cat(sprintf("Rare variants (AF < 1%%): %s rows\n", format(nrow(df_rare), big.mark = ",")))
+cat(sprintf("Rare variants (AF < 1%% per ancestry): %s rows\n",
+            format(nrow(df_rare), big.mark = ",")))
 
-# ── 5. Filter: functional variants only ──────────────────────
+# ── 5. Filter: LoF HC only (primary analysis) ────────────────
+df_lof_only <- df_rare %>%
+  filter(lof == "HC")
+
+# Keep df_func for reference counts only
 df_func <- df_rare %>%
   filter(
     lof == "HC" |
@@ -50,52 +69,45 @@ df_func <- df_rare %>%
       )
   )
 
-cat(sprintf("Functional rare variants: %s rows\n", format(nrow(df_func), big.mark = ",")))
-cat(sprintf("Consequence types: %s\n", paste(unique(df_func$consequence), collapse = ", ")))
+cat(sprintf("LoF HC only (primary): %s rows\n",
+            format(nrow(df_lof_only), big.mark = ",")))
+cat(sprintf("LoF HC + missense (reference): %s rows\n",
+            format(nrow(df_func), big.mark = ",")))
 
-# ── 6. Sanity check: variants per gene ───────────────────────
-cat("\nVariants per gene (functional, rare):\n")
-
-df_func %>%
+# ── 6. Sanity check: LoF variants per gene ───────────────────
+cat("\nLoF HC variants per gene:\n")
+df_lof_only %>%
   distinct(gene, variant_id) %>%
-  count(gene, name = "n_variants") %>%
-  arrange(desc(n_variants)) %>%
+  count(gene, name = "n_lof_variants") %>%
+  arrange(desc(n_lof_variants)) %>%
   as.data.frame() %>%
   print()
 
 # ── 7. Calculate burden per gene per ancestry ─────────────────
-# Two versions:
-# - burden_all: all ancestries with AN > 0 (for heatmap)
-# - burden_filtered: AN >= 10,000 only (for demographic scatter)
+calc_burden <- function(data) {
+  data %>%
+    group_by(gene, ancestry) %>%
+    summarise(
+      total_ac   = sum(ac, na.rm = TRUE),
+      max_an     = max(an, na.rm = TRUE),
+      n_variants = n_distinct(variant_id),
+      burden_raw = total_ac / max_an,
+      burden_1e4 = burden_raw * 1e4,
+      .groups = "drop"
+    )
+}
 
-burden_all <- df_func %>%
+burden_all <- df_lof_only %>%
   filter(an > 0) %>%
-  group_by(gene, ancestry) %>%
-  summarise(
-    total_ac   = sum(ac, na.rm = TRUE),
-    mean_an    = mean(an, na.rm = TRUE),
-    n_variants = n_distinct(variant_id),
-    burden_raw = total_ac / mean_an,
-    burden_1e4 = burden_raw * 1e4,
-    .groups = "drop"
-  )
+  calc_burden()
 
-burden_filtered <- df_func %>%
+burden_filtered <- df_lof_only %>%
   filter(an >= 10000) %>%
-  group_by(gene, ancestry) %>%
-  summarise(
-    total_ac   = sum(ac, na.rm = TRUE),
-    mean_an    = mean(an, na.rm = TRUE),
-    n_variants = n_distinct(variant_id),
-    burden_raw = total_ac / mean_an,
-    burden_1e4 = burden_raw * 1e4,
-    .groups = "drop"
-  )
+  calc_burden()
 
-# Use burden_all as default for downstream steps
 burden <- burden_all
 
-cat("\nBurden summary (top 20 gene x ancestry combinations):\n")
+cat("\nLoF burden summary (top 20 gene x ancestry combinations):\n")
 burden %>%
   arrange(desc(burden_1e4)) %>%
   head(20) %>%
@@ -115,42 +127,10 @@ module_map <- tibble(
 burden <- burden %>%
   left_join(module_map, by = "gene")
 
-# ── 9. Ancestry labels (readable names) ──────────────────────
-ancestry_labels <- c(
-  afr = "African",
-  ami = "Amish",
-  amr = "Admixed American",
-  asj = "Ashkenazi Jewish",
-  eas = "East Asian",
-  fin = "Finnish",
-  mid = "Middle Eastern",
-  nfe = "Non-Finnish European",
-  sas = "South Asian"
-)
+burden_filtered <- burden_filtered %>%
+  left_join(module_map, by = "gene")
 
-burden <- burden %>%
-  mutate(ancestry_label = ancestry_labels[ancestry])
-
-# ── 10. Save processed data ───────────────────────────────────
-write_tsv(burden_filtered, "data/processed/burden_by_gene_ancestry.tsv")
-cat(sprintf("\nBurden table saved: %s gene x ancestry combinations\n",
-            nrow(burden)))
-
-# ── 11. Heatmap: burden × gene × ancestry ────────────────────
-library(ggplot2)
-
-# Check ancestries present
-cat("\nAncestries in burden table:\n")
-print(unique(burden$ancestry))
-
-# Order genes by burden in Africans (descending) within each module
-gene_order <- burden %>%
-  filter(ancestry == "afr") %>%
-  arrange(module, desc(burden_1e4)) %>%
-  pull(gene)
-
-ancestry_order <- c("afr", "ami", "amr", "asj", "eas", "fin", "mid", "nfe", "sas")
-
+# ── 9. Ancestry labels ────────────────────────────────────────
 ancestry_labels_full <- c(
   afr = "African",
   ami = "Amish",
@@ -163,8 +143,36 @@ ancestry_labels_full <- c(
   sas = "South Asian"
 )
 
+burden <- burden %>%
+  mutate(ancestry_label = ancestry_labels_full[ancestry])
+
+# ── 10. Save processed data ───────────────────────────────────
+write_tsv(burden_filtered, "data/processed/burden_by_gene_ancestry.tsv")
+cat(sprintf("\nBurden table saved: %s gene x ancestry combinations\n",
+            nrow(burden_filtered)))
+
+# ── 11. Heatmap ───────────────────────────────────────────────
+cat("\nAncestries in burden table:\n")
+print(unique(burden$ancestry))
+
+ancestry_order <- c("afr", "ami", "amr", "asj", "eas", "fin", "mid", "nfe", "sas")
+
+# Exclude TLR10: no LoF HC variants in gnomAD v4
+genes_for_figures <- module_map %>%
+  filter(gene != "TLR10") %>%
+  pull(gene)
+
+gene_order <- burden %>%
+  filter(ancestry == "afr", gene %in% genes_for_figures) %>%
+  arrange(module, desc(burden_1e4)) %>%
+  pull(gene)
+
 p_heatmap <- burden %>%
-  filter(ancestry %in% ancestry_order) %>%
+  filter(
+    ancestry %in% ancestry_order,
+    gene %in% genes_for_figures,
+    !is.na(burden_1e4)
+  ) %>%
   mutate(
     gene          = factor(gene, levels = gene_order),
     ancestry      = factor(ancestry, levels = ancestry_order),
@@ -184,11 +192,11 @@ p_heatmap <- burden %>%
   ) +
   scale_x_discrete(labels = ancestry_labels_full) +
   labs(
-    title    = "Rare Functional Variant Burden Across Human Populations",
-    subtitle = "gnomAD v4 | MAF < 1% | LoF HC + missense | 15 candidate genes",
+    title    = "Rare LoF Variant Burden Across Human Populations",
+    subtitle = "gnomAD v4 | MAF < 1% per ancestry | LoF HC only (LOFTEE) | 14 candidate genes",
     x        = NULL,
     y        = NULL,
-    caption  = "Burden = Σ(AC) / mean(AN) × 10,000  |  * small sample size (AN < 10,000)"
+    caption  = "Burden = Σ(AC) / max(AN) × 10,000  |  * small sample size (AN < 10,000)  |  TLR10 excluded: no LoF HC variants in gnomAD v4"
   ) +
   theme_minimal(base_size = 11) +
   theme(
@@ -203,43 +211,32 @@ p_heatmap <- burden %>%
     panel.grid       = element_blank()
   )
 
-ggsave(
-  "figures/01_burden_heatmap.png",
-  plot   = p_heatmap,
-  width  = 11,
-  height = 8,
-  dpi    = 300
-)
-
+ggsave("figures/01_burden_heatmap.png",
+       plot = p_heatmap, width = 11, height = 8, dpi = 300)
 cat("\nHeatmap saved: figures/01_burden_heatmap.png\n")
 
-# ── 12. Ancestry-specific variants: lollipop plot ─────────────
-# Define "ancestry-specific" as: variant observed in only 1 ancestry group
-# with AC > 0, among all ancestry groups with sufficient coverage (AN > 1000)
-
-# Step 1: pivot to wide format — one row per variant
-ancestry_specific <- df_func %>%
-  filter(an > 1000) %>%                         # only well-covered ancestries
+# ── 12. Lollipop: ancestry-specific LoF variants ─────────────
+ancestry_specific <- df_lof_only %>%
+  filter(an > 1000, gene %in% genes_for_figures) %>%
   group_by(gene, variant_id, ancestry) %>%
   summarise(ac = sum(ac), .groups = "drop") %>%
   group_by(gene, variant_id) %>%
   summarise(
-    n_ancestries_with_ac = sum(ac > 0),          # how many ancestries carry it
+    n_ancestries_with_ac = sum(ac > 0),
     dominant_ancestry    = ancestry[which.max(ac)],
     max_ac               = max(ac),
     .groups = "drop"
   ) %>%
-  filter(n_ancestries_with_ac == 1)              # strictly ancestry-specific
+  filter(n_ancestries_with_ac == 1)
 
-cat(sprintf("\nAncestry-specific variants: %s\n", nrow(ancestry_specific)))
+cat(sprintf("\nAncestry-specific LoF variants (strict): %s\n",
+            nrow(ancestry_specific)))
 
-# Step 2: get mean AN per gene per ancestry for normalization
-an_per_ancestry <- df_func %>%
-  filter(an > 1000) %>%
+an_per_ancestry <- df_lof_only %>%
+  filter(an > 1000, gene %in% genes_for_figures) %>%
   group_by(gene, ancestry) %>%
   summarise(mean_an = mean(an), .groups = "drop")
 
-# Step 3: count specific variants per gene per ancestry, normalized
 lollipop_data <- ancestry_specific %>%
   left_join(module_map, by = "gene") %>%
   count(gene, dominant_ancestry, module, name = "n_specific") %>%
@@ -247,14 +244,13 @@ lollipop_data <- ancestry_specific %>%
             by = c("gene", "dominant_ancestry" = "ancestry")) %>%
   filter(dominant_ancestry %in% ancestry_order) %>%
   mutate(
-    # Normalize: specific variants per 10,000 chromosomes
-    n_specific_norm = (n_specific / mean_an) * 1e4,
-    ancestry_label  = ancestry_labels_full[dominant_ancestry],
-    gene            = factor(gene, levels = gene_order),
+    n_specific_norm   = (n_specific / mean_an) * 1e4,
+    ancestry_label    = ancestry_labels_full[dominant_ancestry],
+    gene              = factor(gene, levels = gene_order),
     dominant_ancestry = factor(dominant_ancestry, levels = ancestry_order)
   )
 
-cat("\nNormalized ancestry-specific variants (top 20):\n")
+cat("\nNormalized ancestry-specific LoF variants (top 20):\n")
 lollipop_data %>%
   arrange(desc(n_specific_norm)) %>%
   head(20) %>%
@@ -262,7 +258,6 @@ lollipop_data %>%
   as.data.frame() %>%
   print()
 
-# Step 4: plot normalized
 p_lollipop <- lollipop_data %>%
   ggplot(aes(x = n_specific_norm, y = gene, color = dominant_ancestry)) +
   geom_segment(aes(x = 0, xend = n_specific_norm, y = gene, yend = gene),
@@ -270,26 +265,17 @@ p_lollipop <- lollipop_data %>%
   geom_point(size = 3.5, alpha = 0.9) +
   facet_grid(module ~ ., scales = "free_y", space = "free_y") +
   scale_color_manual(
-    values = c(
-      afr = "#e94560",
-      ami = "#a8dadc",
-      amr = "#f4a261",
-      asj = "#9b5de5",
-      eas = "#00b4d8",
-      fin = "#06d6a0",
-      mid = "#ffd166",
-      nfe = "#457b9d",
-      sas = "#f77f00"
-    ),
-    labels = ancestry_labels_full,
-    name   = "Ancestry"
+    values = c(afr="#e94560", ami="#a8dadc", amr="#f4a261", asj="#9b5de5",
+               eas="#00b4d8", fin="#06d6a0", mid="#ffd166",
+               nfe="#457b9d", sas="#f77f00"),
+    labels = ancestry_labels_full, name = "Ancestry"
   ) +
   labs(
-    title    = "Ancestry-Specific Rare Functional Variants (Normalized)",
-    subtitle = "Variants present in exactly one ancestry | per 10,000 chromosomes | gnomAD v4",
-    x        = "Ancestry-specific variants per 10,000 chromosomes",
+    title    = "Ancestry-Specific Rare LoF Variants (Normalized)",
+    subtitle = "LoF HC variants present in exactly one ancestry | per 10,000 chromosomes | gnomAD v4",
+    x        = "Ancestry-specific LoF variants per 10,000 chromosomes",
     y        = NULL,
-    caption  = "Normalized by mean AN per gene per ancestry to correct for sample size differences"
+    caption  = "Normalized by mean AN per gene per ancestry to correct for sample size differences\nAncestry-specific = AC > 0 in exactly one ancestry group (AN > 1,000) | LoF HC only"
   ) +
   theme_minimal(base_size = 11) +
   theme(
@@ -303,34 +289,30 @@ p_lollipop <- lollipop_data %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(
-  "figures/02_ancestry_specific_lollipop.png",
-  plot   = p_lollipop,
-  width  = 10,
-  height = 8,
-  dpi    = 300
-)
-
+ggsave("figures/02_ancestry_specific_lollipop.png",
+       plot = p_lollipop, width = 10, height = 8, dpi = 300)
 cat("\nLollipop plot saved: figures/02_ancestry_specific_lollipop.png\n")
 
-# ── 13. Scatter: demographic history vs burden ────────────────
-# Effective population size (Ne) estimates from published literature
-# Sources: Tenesa et al. 2007, Browning et al. 2018, gnomAD flagship paper
-# These are approximate historical Ne estimates (thousands)
+# ── 13. Scatter: demographic context of burden ────────────────
+# NOTE: exploratory only — R²=0.24, p=0.264 with LoF HC burden.
+# Insufficient statistical power with n=7 populations and gene-specific
+# LoF HC counts. Retained as contextual figure, not causal inference.
+#
+# Ne estimates (thousands):
+# Tenesa et al. 2007 (Nat Genet): afr=17.0, eas=7.0, nfe=8.0
+# Gravel et al. 2011 (PNAS): amr=5.0, sas=9.0
+# Carmi et al. 2014 (Nat Commun): asj=1.5
+# Lim et al. 2014: fin=3.5
 
 ne_data <- tibble(
   ancestry = c("afr", "amr", "asj", "eas", "fin", "mid", "nfe", "sas"),
   ancestry_label = c("African", "Admixed American", "Ashkenazi Jewish",
                      "East Asian", "Finnish", "Middle Eastern",
                      "Non-Finnish Eur.", "South Asian"),
-  # Historical Ne in thousands (approximate)
-  # afr: large, pre-OOA; fin/asj: strong bottleneck
   ne_thousands = c(17.0, 5.0, 1.5, 7.0, 3.5, 4.0, 8.0, 9.0),
-  # Approximate bottleneck strength (1=strong, 5=weak/none)
-  bottleneck = c(5, 2, 1, 3, 1, 2, 3, 3)
+  bottleneck   = c(5, 2, 1, 3, 1, 2, 3, 3)
 )
 
-# Calculate mean burden per ancestry across all genes
 mean_burden <- burden_filtered %>%
   filter(ancestry %in% ne_data$ancestry) %>%
   group_by(ancestry) %>%
@@ -350,7 +332,12 @@ scatter_data %>%
   as.data.frame() %>%
   print()
 
-# Plot
+lm_fit <- lm(mean_burden ~ ne_thousands, data = scatter_data)
+lm_sum <- summary(lm_fit)
+cat(sprintf("\nLinear model: R² = %.3f, p = %.3f (n=7, interpret with caution)\n",
+            lm_sum$r.squared,
+            lm_sum$coefficients[2, 4]))
+
 p_scatter <- scatter_data %>%
   ggplot(aes(x = ne_thousands, y = mean_burden)) +
   geom_smooth(method = "lm", se = TRUE,
@@ -361,60 +348,58 @@ p_scatter <- scatter_data %>%
   geom_text(aes(label = ancestry_label),
             hjust = -0.15, vjust = 0.4, size = 3, color = "grey30") +
   scale_fill_manual(
-    values = c(
-      afr = "#e94560", amr = "#f4a261", asj = "#9b5de5",
-      eas = "#00b4d8", fin = "#06d6a0", mid = "#ffd166",
-      nfe = "#457b9d", sas = "#f77f00"
-    ),
+    values = c(afr="#e94560", amr="#f4a261", asj="#9b5de5",
+               eas="#00b4d8", fin="#06d6a0", mid="#ffd166",
+               nfe="#457b9d", sas="#f77f00"),
     guide = "none"
   ) +
   scale_size_continuous(
-    range  = c(4, 10),
-    name   = "Bottleneck\nstrength",
-    breaks = c(1, 3, 5),
-    labels = c("Strong", "Moderate", "Weak/None")
+    range  = c(4, 10), name = "Bottleneck\nstrength",
+    breaks = c(1, 3, 5), labels = c("Strong", "Moderate", "Weak/None")
   ) +
   scale_x_continuous(
-    name   = "Historical effective population size, Ne (thousands)",
+    name = "Historical effective population size, Ne (thousands)",
     limits = c(0, 20)
   ) +
   labs(
-    title    = "Demographic History Predicts Rare Variant Burden",
-    subtitle = "Mean rare functional variant burden vs. historical Ne across ancestries",
-    y        = "Mean burden (per 10K chromosomes)",
-    caption  = "Ne estimates from Tenesa et al. 2007 and gnomAD flagship paper.\nPoint size reflects bottleneck strength."
+    title    = "Demographic Context of Rare LoF Variant Burden",
+    subtitle = paste0("Mean rare LoF HC variant burden vs. historical Ne across ancestries\n",
+                      "(exploratory; R² = 0.24, p = 0.264, n = 7)"),
+    y        = "Mean LoF burden (per 10K chromosomes)",
+    caption  = "Ne: Tenesa 2007, Gravel 2011, Carmi 2014, Lim 2014\nInsufficient power for definitive conclusions; retained as contextual figure."
   ) +
   theme_minimal(base_size = 11) +
   theme(
-    plot.title    = element_text(face = "bold", size = 13),
-    plot.subtitle = element_text(size = 9, color = "grey40"),
-    plot.caption  = element_text(size = 7, color = "grey60"),
-    legend.position = "right",
+    plot.title       = element_text(face = "bold", size = 13),
+    plot.subtitle    = element_text(size = 9, color = "grey40"),
+    plot.caption     = element_text(size = 7, color = "grey60"),
+    legend.position  = "right",
     panel.grid.minor = element_blank()
   )
 
-ggsave(
-  "figures/03_demographic_burden_scatter.png",
-  plot   = p_scatter,
-  width  = 10,
-  height = 7,
-  dpi    = 300
-)
-
-cat("\nScatter plot saved: figures/03_demographic_scatter.png\n")
+ggsave("figures/03_demographic_burden_scatter.png",
+       plot = p_scatter, width = 10, height = 7, dpi = 300)
+cat("\nScatter plot saved: figures/03_demographic_burden_scatter.png\n")
 
 # ── 14. Constraint plot ───────────────────────────────────────
+# LOEUF thresholds (Karczewski et al. 2020, Nature):
+# < 0.35: high confidence constrained (pLI > 0.9)
+# 0.35-0.70: moderate constraint
+# > 0.70: tolerant
+# TLR10 excluded: no constraint data in gnomAD v4
+
 constraint <- read_tsv("data/processed/constraint_metrics.tsv",
                        show_col_types = FALSE)
 
 constraint <- constraint %>%
+  filter(!is.na(LOEUF), gene %in% genes_for_figures) %>%
   left_join(module_map, by = "gene") %>%
   mutate(
     gene        = factor(gene, levels = gene_order),
     constrained = case_when(
       LOEUF < 0.35                 ~ "Highly constrained",
       LOEUF >= 0.35 & LOEUF < 0.7 ~ "Moderately constrained",
-      LOEUF >= 0.7 | is.na(LOEUF) ~ "Tolerant / unconstrained"
+      LOEUF >= 0.7                 ~ "Tolerant / unconstrained"
     ),
     constrained = factor(constrained,
                          levels = c("Highly constrained",
@@ -429,8 +414,10 @@ p_constraint <- constraint %>%
              color = "#e94560", linewidth = 0.6) +
   geom_vline(xintercept = 0.7, linetype = "dashed",
              color = "#f4a261", linewidth = 0.6) +
-  annotate("text", x = 0.36, y = 0.6, label = "pLI threshold",
+  annotate("text", x = 0.36, y = 0.6, label = "LOEUF = 0.35",
            hjust = 0, size = 2.8, color = "#e94560") +
+  annotate("text", x = 0.71, y = 0.6, label = "LOEUF = 0.70",
+           hjust = 0, size = 2.8, color = "#f4a261") +
   facet_grid(module ~ ., scales = "free_y", space = "free_y") +
   scale_fill_manual(
     values = c(
@@ -446,9 +433,9 @@ p_constraint <- constraint %>%
   ) +
   labs(
     title    = "Loss-of-Function Constraint Across Candidate Genes",
-    subtitle = "gnomAD v4 | LOEUF < 0.35: highly constrained | NA = no constraint data",
+    subtitle = "gnomAD v4 | LOEUF < 0.35: highly constrained | LOEUF < 0.70: moderately constrained",
     y        = NULL,
-    caption  = "LOEUF: upper bound of observed/expected LoF ratio confidence interval"
+    caption  = "LOEUF thresholds: Karczewski et al. 2020 (Nature). TLR10 excluded: no constraint data in gnomAD v4."
   ) +
   theme_minimal(base_size = 11) +
   theme(
@@ -462,12 +449,6 @@ p_constraint <- constraint %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(
-  "figures/04_constraint_loeuf.png",
-  plot   = p_constraint,
-  width  = 10,
-  height = 8,
-  dpi    = 300
-)
-
+ggsave("figures/04_constraint_loeuf.png",
+       plot = p_constraint, width = 10, height = 8, dpi = 300)
 cat("\nConstraint plot saved: figures/04_constraint_loeuf.png\n")
