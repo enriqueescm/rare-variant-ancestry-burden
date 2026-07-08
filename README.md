@@ -1,8 +1,6 @@
 # Ancestry-Stratified Rare LoF Variant Burden in Immune and Skeletal Genes
 
-**Enrique Estévez Campo** · Biological Anthropologist & MSc Bioinformatics student  
-Universidad de Barcelona · 2025
-
+**Enrique Estévez Campo** · Biological Anthropologist & PhD in Biomedicine  
 ---
 
 ## Overview
@@ -169,6 +167,6 @@ spectrum of rare functional variants.
 ## Author
 
 **Enrique (Kike) Estévez Campo**  
-PhD in Biomedicine · MSc Bioinformatics & Biostatistics (UB, in progress)  
-Biological anthropologist transitioning to population genomics  
+PhD in Biomedicine · Biological Anthropologist  
+Transitioning to population genomics and computational biology
 [GitHub](https://github.com/enriqueescm) · [LinkedIn](https://linkedin.com/in/enriqueescm)
