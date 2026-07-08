@@ -168,5 +168,5 @@ spectrum of rare functional variants.
 
 **Enrique (Kike) Estévez Campo**  
 PhD in Biomedicine · Biological Anthropologist  
-Transitioning to population genomics and computational biology
-[GitHub](https://github.com/enriqueescm) · [LinkedIn](https://linkedin.com/in/enriqueescm)
+Population genomics | Human genetic variation
+[GitHub](https://github.com/enriqueescm) · [LinkedIn](https://www.linkedin.com/in/enrique-estevez-campo/)
