@@ -149,8 +149,9 @@ spectrum of rare functional variants.
 
 - Karczewski et al. (2020). The mutational constraint spectrum quantified from
   variation in 141,456 humans. *Nature*, 581, 434–443.
-- Collins et al. (2024). A cross-disorder dosage sensitivity map of the human
-  genome. *Cell*, 187, 1–15. [gnomAD v4]
+- gnomAD v4 Team (2023). gnomAD v4.0 release: 730,947 exomes and 76,215 genomes
+  mapped to GRCh38. Broad Institute.
+  https://gnomad.broadinstitute.org/news/2023-11-gnomad-v4-0/
 - Tenesa et al. (2007). Recent human effective population size estimated from
   linkage disequilibrium. *Genome Research*, 17, 520–526.
 - Gravel et al. (2011). Demographic history and rare allele sharing among human
