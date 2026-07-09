@@ -33,7 +33,7 @@ library(kableExtra)
 
 ## Abstract
 
-Human populations differ in their histories of migration, bottlenecks, and pathogen exposure — forces that have shaped not only observable morphological diversity but also the architecture of rare functional genetic variation. Here I present an ancestry-stratified analysis of rare loss-of-function (LoF) variant burden across 14 candidate genes spanning three biological modules: innate immunity, autoimmunity, and skeletal biology. Using gnomAD v4 exome data from 730,947 individuals across eight ancestry groups, I characterize how LoF variant burden, ancestry-specific variant density, and gene constraint vary across populations. CD36 and IFIH1 emerge as the genes with the strongest ancestry-differentiated LoF burden, consistent with documented histories of pathogen-driven selection. Module B (autoimmunity) genes show uniformly low burden across all ancestries, consistent with strong purifying selection. The relationship between historical effective population size and mean LoF burden shows a positive trend that does not reach statistical significance at this gene panel scale (R² = 0.24, p = 0.264, n = 7), highlighting the limitations of candidate gene approaches for demographic inference. This analysis bridges biological anthropology and population genomics, demonstrating that the same demographic forces that diversified human morphology leave signatures in the spectrum of rare functional variants.
+Human populations differ in their histories of migration, bottlenecks, and pathogen exposure — forces that have shaped not only observable morphological diversity but also the architecture of rare functional genetic variation. Here I present an ancestry-stratified analysis of rare loss-of-function (LoF) variant burden across 14 candidate genes spanning three biological modules: innate immunity, autoimmunity, and skeletal biology. Using gnomAD v4 exome data from 730,947 individuals across eight ancestry groups, I characterize how LoF variant burden, ancestry-specific variant density, and gene constraint vary across populations. CD36 and IFIH1 emerge as the genes with the strongest ancestry-differentiated LoF burden, consistent with hypotheses of pathogen-mediated selection previously proposed for these genes. Module B (autoimmunity) genes show consistently low burden across all ancestries, consistent with strong purifying selection. The relationship between historical effective population size and mean LoF burden shows a weak positive trend that does not reach statistical significance at this gene panel scale (R² = 0.24, p = 0.264, n = 7), highlighting the limitations of candidate gene approaches for demographic inference. This analysis bridges biological anthropology and population genomics, suggesting that the same demographic forces that diversified human morphology may leave signatures in the spectrum of rare functional variants.
 
 **Keywords:** rare variants, loss-of-function, ancestry, gnomAD, population genomics, CD36, IFIH1, effective population size
 
@@ -43,9 +43,9 @@ Human populations differ in their histories of migration, bottlenecks, and patho
 
 The observation that human populations differ in disease prevalence and drug response has long motivated the study of population-specific genetic variation. Yet the vast majority of large-scale genetic studies have focused on European-ancestry cohorts, leaving the genetic architecture of disease risk in other populations poorly characterized [@thorlacius2025]. A striking illustration of this gap is the recent identification of a rare IKBKB variant — IKKβ E502K — conferring a 3-4 fold increased risk of lupus exclusively in individuals of African ancestry, a signal that would have been invisible in a European-only study [@thorlacius2025].
 
-This project asks a related question at the population level: how does the spectrum of rare loss-of-function variation differ across human ancestry groups in genes relevant to immunity and skeletal biology? The hypothesis draws on a foundational principle of population genetics — that demographic history, specifically effective population size (Ne), bottlenecks, and selective pressures, shapes the distribution of rare deleterious variants [@gravel2011; @lim2014]. Populations with small historical Ne (e.g. Ashkenazi Jewish, Finnish) are expected to accumulate more deleterious variants through genetic drift, while populations with large Ne and ancient demographic histories (e.g. African) harbor greater allelic diversity, including potentially adaptive variants absent in other groups.
+This project asks a related question at the population level: how does the spectrum of rare loss-of-function variation differ across human ancestry groups in genes relevant to immunity and skeletal biology? The hypothesis draws on a foundational principle of population genetics — that demographic history, specifically historical effective population size (Ne), bottlenecks, and selective pressures, shapes the distribution of rare LoF variants [@gravel2011; @lim2014]. Populations with small historical Ne (e.g. Ashkenazi Jewish, Finnish) may accumulate more LoF variants through genetic drift, while populations with large Ne and ancient demographic histories (e.g. African) harbor greater allelic diversity, including potentially adaptive variants absent in other groups.
 
-The candidate gene panel spans three biological modules with distinct evolutionary expectations. Module A (innate immunity) includes genes known to be under differential positive selection across populations — CD36 and ACKR1 (DARC) represent canonical examples of pathogen-driven adaptation, while IFIH1 shows evidence of positive selection in African populations [@tenesa2007]. Module B (autoimmunity) includes trans-ancestral GWAS loci for lupus and related diseases, expected to be under strong purifying selection. Module C (skeletal biology) grounds the analysis in the author's background in biological anthropology, connecting molecular variation in osteogenesis genes to macroscopic patterns of skeletal diversity.
+The candidate gene panel spans three biological modules with distinct evolutionary expectations. Module A (innate immunity) includes genes for which hypotheses of differential positive selection across populations have been proposed — CD36 and ACKR1 (DARC) are classical candidates for pathogen-driven adaptation, while IFIH1 has been proposed as a target of positive selection in African populations [@tenesa2007]. Module B (autoimmunity) includes trans-ancestral GWAS loci for lupus and related diseases, expected to be under strong purifying selection. Module C (skeletal biology) grounds the analysis in the author's background in biological anthropology, connecting molecular variation in osteogenesis genes to macroscopic patterns of skeletal diversity.
 
 ---
 
@@ -53,11 +53,11 @@ The candidate gene panel spans three biological modules with distinct evolutiona
 
 ### Data source
 
-All variant data were retrieved from the gnomAD v4.0 exome dataset via the public GraphQL API [@gnomad2023]. gnomAD v4 contains 730,947 exome sequences mapped to GRCh38, representing the largest publicly available human exome resource. Eight ancestry groups were analyzed: African (afr), Admixed American (amr), Ashkenazi Jewish (asj), East Asian (eas), Finnish (fin), Middle Eastern (mid), Non-Finnish European (nfe), and South Asian (sas).
+All variant data were retrieved from the gnomAD v4.0 exome dataset via the public GraphQL API [@gnomad2023]. gnomAD v4 contains 730,947 exome sequences mapped to GRCh38, representing the largest publicly available human exome resource. Eight ancestry groups were analyzed: African (afr), Admixed American (amr), Ashkenazi Jewish (asj), East Asian (eas), Finnish (fin), Middle Eastern (mid), Non-Finnish European (nfe), and South Asian (sas). These ancestry groups represent genetically inferred clusters rather than discrete biological populations, and their boundaries reflect both genetic structure and ascertainment decisions made during gnomAD curation. Furthermore, gnomAD is not a random population cohort — it aggregates exome and genome sequences from disease studies, biobanks, and population resources with variable ascertainment strategies, which may introduce systematic differences in variant detection power across ancestry groups.
 
 ### Gene selection
 
-Fifteen candidate genes were selected a priori across three biological modules based on published evidence of ancestry-specific variation, GWAS signal, or relevance to the author's prior work in skeletal biology (@tbl-genes). TLR10 was subsequently excluded from burden figures due to absence of LoF HC variants in gnomAD v4 exomes.
+Fifteen candidate genes were selected a priori across three biological modules based on published evidence of ancestry-specific variation, GWAS signal, or relevance to the author's prior work in skeletal biology (@tbl-genes). TLR10 was subsequently excluded from burden figures due to absence of LoF HC variants in gnomAD v4 exomes. Genes in Module C represent key regulatory nodes of osteogenesis rather than a single signalling pathway: RUNX2 is the master transcription factor for osteoblast differentiation, COL1A1 encodes the primary structural protein of bone matrix, SP7 acts downstream of RUNX2, LRP5 is a co-receptor in the Wnt signalling pathway regulating bone density, and VDR mediates vitamin D signalling in mineral metabolism.
 
 ```{r}
 #| label: tbl-genes
@@ -73,12 +73,12 @@ genes_table <- tibble(
            "RUNX2", "COL1A1", "SP7", "LRP5", "VDR"),
   Rationale = c(
     "NF-κB kinase; lupus risk variant in Africans (Thorlacius et al. 2025)",
-    "Cytosolic RNA sensor; positive selection in Africans",
-    "Toll-like receptor; selection in non-Africans",
+    "Cytosolic RNA sensor; proposed positive selection in Africans",
+    "Toll-like receptor; proposed selection in non-Africans",
     "Toll-like receptor; cluster with TLR1/TLR10",
     "Toll-like receptor; no LoF HC in gnomAD v4 (excluded)",
-    "Duffy antigen; canonical malaria adaptation",
-    "Scavenger receptor; LoF protective against malaria",
+    "Duffy antigen; classical candidate for malaria adaptation",
+    "Scavenger receptor; LoF proposed protective against malaria",
     "JAK-STAT pathway; lupus GWAS in East Asians",
     "Interferon regulatory factor; trans-ancestral lupus locus",
     "NF-κB regulator; highest constraint (LOEUF=0.217)",
@@ -86,7 +86,7 @@ genes_table <- tibble(
     "Collagen type I; essential bone matrix gene",
     "Osteoblast TF downstream of RUNX2",
     "Wnt coreceptor; bone density GWAS",
-    "Vitamin D receptor; UV adaptation narrative"
+    "Vitamin D receptor; mineral metabolism and bone biology"
   )
 )
 
@@ -101,7 +101,7 @@ Variants were filtered through three sequential steps:
 
 1. **Data type**: exomes only, per-ancestry rows, excluding `ALL` and `remaining` categories
 2. **Rarity**: allele frequency < 1% per ancestry (applied per-ancestry intentionally, to capture variants rare within each specific population)
-3. **Functionality**: high-confidence loss-of-function variants only (LOFTEE HC annotation). Missense variants were excluded from the primary analysis because, without CADD pathogenicity filtering, they inflate burden with likely benign variants (Pearson r = 0.46 between missense+LoF and LoF-only burden in an internal sensitivity analysis).
+3. **Functionality**: high-confidence loss-of-function variants only, as annotated by LOFTEE (Loss-Of-Function Transcript Effect Estimator) with the HC (high-confidence) flag. LOFTEE applies a series of stringent filters beyond simple variant consequence annotation: it removes variants in the last 5% of the transcript (where LoF may not result in nonsense-mediated decay), filters splice-site variants that do not disrupt the canonical splice dinucleotides, excludes variants in low-complexity or poorly mappable regions, and flags variants where the LoF annotation may be a sequencing or alignment artefact. Only variants passing all LOFTEE HC criteria were retained. Missense variants were excluded from the primary analysis because, without CADD pathogenicity filtering, they inflate burden with likely benign variants (Pearson r = 0.46 between missense+LoF and LoF-only burden in an internal sensitivity analysis).
 
 ### Burden calculation
 
@@ -119,7 +119,7 @@ LOEUF (upper bound of the observed/expected LoF ratio confidence interval) and p
 
 ### Historical effective population size
 
-Ne estimates were obtained from published demographic inference studies: @tenesa2007 for African, East Asian, and Non-Finnish European populations; @gravel2011 for Admixed American and South Asian; @carmi2014 for Ashkenazi Jewish; and @lim2014 for Finnish.
+Historical Ne estimates were obtained from published demographic inference studies: @tenesa2007 for African, East Asian, and Non-Finnish European populations; @gravel2011 for Admixed American and South Asian; @carmi2014 for Ashkenazi Jewish; and @lim2014 for Finnish. These values are model-dependent approximations and should be interpreted as order-of-magnitude estimates rather than precise quantities.
 
 ---
 
@@ -155,9 +155,9 @@ After filtering, `r format(nrow(df_lof_only), big.mark=",")` variant × ancestry
 knitr::include_graphics("/Users/kike/projects/rare-variant-ancestry-burden/figures/01_burden_heatmap.png")
 ```
 
-CD36 and IFIH1 show the strongest ancestry-differentiated LoF burden (@fig-heatmap). CD36 burden in African individuals (456 per 10K chromosomes) and East Asian (422) substantially exceeds Finnish (6) and Non-Finnish European (52), consistent with documented positive selection driven by differential malaria exposure. IFIH1, encoding the cytosolic RNA sensor MDA5, shows elevated burden across Admixed American (397), Middle Eastern (253), and Non-Finnish European (350) populations.
+Within this candidate panel, CD36 and IFIH1 show the strongest ancestry-differentiated LoF burden (@fig-heatmap). CD36 burden in African individuals (456 per 10K chromosomes) and East Asian (422) substantially exceeds Finnish (6) and Non-Finnish European (52), a pattern consistent with hypotheses of pathogen-mediated selection previously proposed for CD36. IFIH1, encoding the cytosolic RNA sensor MDA5, shows elevated burden across Admixed American (397), Middle Eastern (253), and Non-Finnish European (350) populations.
 
-In contrast, Module B (autoimmunity) genes — STAT4, IRF5, and TNFAIP3 — show uniformly low LoF burden across all ancestries (values < 10 per 10K chromosomes in most cases), consistent with strong purifying selection. Module C (skeletal) genes likewise show low burden, with COL1A1 and RUNX2 near zero across all populations.
+In contrast, Module B (autoimmunity) genes — STAT4, IRF5, and TNFAIP3 — show consistently low LoF burden across all ancestries (values < 10 per 10K chromosomes in most cases), consistent with strong purifying selection. Module C (skeletal) genes likewise show low burden within this panel, with COL1A1 and RUNX2 near zero across all populations.
 
 ### Ancestry-specific LoF variants
 
@@ -168,18 +168,18 @@ In contrast, Module B (autoimmunity) genes — STAT4, IRF5, and TNFAIP3 — show
 knitr::include_graphics("/Users/kike/projects/rare-variant-ancestry-burden/figures/02_ancestry_specific_lollipop.png")
 ```
 
-CD36 shows the highest density of ancestry-specific LoF variants in both African (15.5 per 10K chromosomes) and Middle Eastern (16.0) populations (@fig-lollipop). IFIH1 shows consistent enrichment of ancestry-specific variants across multiple non-European groups. Most Module C genes show near-zero ancestry-specific LoF variant density, consistent with strong purifying selection.
+CD36 shows the highest density of ancestry-specific LoF variants in both African (15.5 per 10K chromosomes) and Middle Eastern (16.0) populations (@fig-lollipop). IFIH1 shows consistent enrichment of ancestry-specific variants across multiple non-European groups within this candidate panel. Most Module C genes show near-zero ancestry-specific LoF variant density, consistent with strong purifying selection.
 
 ### Demographic context
 
 ```{r}
 #| label: fig-scatter
-#| fig-cap: "Mean LoF burden vs. historical effective population size (Ne) across ancestry groups. Exploratory analysis: R² = 0.24, p = 0.264, n = 7. Middle Eastern excluded (AN < 10,000). Point size reflects bottleneck strength."
+#| fig-cap: "Mean LoF burden vs. historical Ne estimates across ancestry groups. Exploratory analysis: R² = 0.24, p = 0.264, n = 7. Middle Eastern excluded (AN < 10,000). Point size reflects bottleneck strength."
 
 knitr::include_graphics("/Users/kike/projects/rare-variant-ancestry-burden/figures/03_demographic_burden_scatter.png")
 ```
 
-A positive relationship between historical Ne and mean LoF burden is visible across ancestry groups (@fig-scatter), with African populations (Ne ≈ 17,000) showing the highest mean burden and Finnish populations (Ne ≈ 3,500) the lowest. However, this trend does not reach statistical significance (R² = 0.24, p = 0.264, n = 7), likely reflecting the limited statistical power of a 14-gene candidate panel and gene-specific variation in LoF constraint. This figure should be interpreted as demographic context rather than causal inference.
+A weak positive trend between historical Ne estimates and mean LoF burden is visible across ancestry groups (@fig-scatter), with African populations (Ne ≈ 17,000) showing the highest mean burden and Finnish populations (Ne ≈ 3,500) the lowest. This trend does not reach statistical significance (R² = 0.24, p = 0.264, n = 7) and should not be interpreted as evidence of a detectable demographic signal at this gene panel scale. The figure is retained as exploratory demographic context.
 
 ### Gene constraint
 
@@ -190,37 +190,45 @@ A positive relationship between historical Ne and mean LoF burden is visible acr
 knitr::include_graphics("/Users/kike/projects/rare-variant-ancestry-burden/figures/04_constraint_loeuf.png")
 ```
 
-Gene constraint varies substantially across the panel (@fig-constraint). COL1A1 (LOEUF = 0.155) and TNFAIP3 (LOEUF = 0.217) are among the most constrained genes in the human genome, while ACKR1 (LOEUF = 3.06) and CD36 (LOEUF = 2.51) are highly tolerant to LoF variation. This constraint landscape directly explains the burden patterns observed: genes tolerant to LoF (CD36, ACKR1) can accumulate ancestry-specific LoF variants without fitness cost, while constrained genes (COL1A1, RUNX2, TNFAIP3) show near-zero LoF burden across all populations.
+Gene constraint varies substantially across the panel (@fig-constraint). COL1A1 (LOEUF = 0.155) and TNFAIP3 (LOEUF = 0.217) are among the most constrained genes in the human genome, while ACKR1 (LOEUF = 3.06) and CD36 (LOEUF = 2.51) are highly tolerant to LoF variation. This constraint landscape is consistent with the burden patterns observed: genes tolerant to LoF (CD36, ACKR1) show greater ancestry-specific variation, while constrained genes (COL1A1, RUNX2, TNFAIP3) show near-zero LoF burden across all populations. However, constraint scores are themselves derived from observed LoF depletion patterns, introducing a degree of circularity that should be acknowledged when using LOEUF as an explanatory variable.
 
 ---
 
 ## Discussion
 
-### CD36 and pathogen-driven adaptation
+### *CD36* and pathogen-driven adaptation
 
-The strongest signal in this analysis is the ancestry-differentiated LoF burden of CD36, which encodes a scavenger receptor involved in the cytoadherence of Plasmodium falciparum-infected erythrocytes. CD36 LoF variants reach high frequencies in African and East Asian populations, consistent with protection against severe malaria — one of the strongest selective pressures in human evolutionary history. The high ancestry-specific LoF variant density in African individuals (15.5 per 10K chromosomes) is fully consistent with this evolutionary history.
+The strongest signal within this candidate panel is the ancestry-differentiated LoF burden of *CD36*, which encodes a scavenger receptor involved in the cytoadherence of *Plasmodium falciparum*-infected erythrocytes. CD36 LoF burden is substantially higher in African and East Asian populations than in European or South Asian groups, a pattern consistent with hypotheses of pathogen-mediated selection previously proposed for this gene. However, the present analysis cannot distinguish between positive selection, genetic drift, founder effects, or differences in mutational target size as explanations for this pattern. Functional validation and population genetic tests of selection would be required to support causal interpretation.
 
-### IFIH1 and antiviral immunity
+It should also be noted that for *ACKR1*, the classical malaria adaptation hypothesis primarily concerns the Duffy-null allele at the promoter level rather than LoF HC variants specifically. The near-zero LoF HC burden observed for *ACKR1* in this analysis is consistent with its high LOEUF (3.06) but does not directly speak to the Duffy-null selection hypothesis.
 
-IFIH1 encodes MDA5, a cytosolic pattern recognition receptor that detects double-stranded RNA and activates interferon responses. The broad elevation of IFIH1 LoF burden across non-European populations — with particularly high ancestry-specific variant density in African and East Asian groups — is consistent with population-specific histories of exposure to RNA viruses. Previous studies have identified IFIH1 as a target of positive selection in African populations, likely driven by exposure to Flaviviruses and Enteroviruses.
+### *IFIH1* and antiviral immunity
+
+*IFIH1* encodes MDA5, a cytosolic pattern recognition receptor that detects double-stranded RNA and activates interferon responses. Within this candidate panel, *IFIH1* shows elevated LoF burden across multiple non-European ancestry groups, a pattern consistent with hypotheses of positive selection previously proposed for this gene in African populations. The specific pressures that may have driven such selection remain an open question and are not addressed by the present analysis.
 
 ### Constraint as an explanatory framework
 
-A key finding is that constraint (LOEUF) largely explains the pattern of ancestry-differentiated burden. Genes tolerant to LoF (CD36, ACKR1, TLR1) show greater ancestry-specific variation, while constrained genes (COL1A1, TNFAIP3, RUNX2) show near-zero burden regardless of ancestry. This suggests that purifying selection acts as a demographic equalizer — constraining the accumulation of LoF variants regardless of population history.
+Within this candidate panel, gene constraint (LOEUF) is broadly consistent with the observed burden patterns — tolerant genes accumulate more ancestry-specific LoF variation, while constrained genes show near-zero burden regardless of ancestry. This is consistent with purifying selection limiting the accumulation of LoF variants in essential genes, potentially outweighing demographic effects. However, LOEUF is itself derived from observed LoF depletion in gnomAD, which introduces circularity when used to explain LoF burden patterns in the same dataset. Additional factors including gene length, local mutation rate, CpG density, and sequencing coverage also contribute to burden differences and are not accounted for in this analysis.
 
-### Limitations
+### The founder effect: from Iceland to global genome architecture
 
-Several limitations should be noted. First, the candidate gene approach limits statistical power for demographic inference — 14 genes are insufficient to detect a genome-wide relationship between Ne and burden. Second, missense variants were excluded without CADD filtering, potentially missing pathogenic missense variation. Third, Middle Eastern ancestry was excluded from the demographic analysis due to small sample size in gnomAD v4 (AN < 10,000 for most genes). Fourth, the burden metric (ΣAC/max(AN)) is an approximation that does not account for variation in gene size or the specific functional impact of individual variants.
+The logic underlying this entire analysis is perhaps best illustrated by a single population: Iceland. Settled in the 9th century by a founding group estimated at fewer than 10,000 individuals — predominantly Norse and Celtic — Iceland underwent one of the most extreme demographic bottlenecks in recent human history [@karczewski2020]. The mathematical consequence is well understood: when Ne drops sharply, genetic drift overpowers purifying selection for variants of moderate effect, allowing mildly deleterious LoF alleles to reach frequencies far above what would be expected in a large outbred population [@lim2014]. Over 35 generations of relative isolation, this process produced a population where rare variants are enriched, linkage disequilibrium extends over longer genomic distances, and haplotype sharing is pervasive — properties that make isolated founder populations exceptional resources for discovering variant-disease associations that would be statistically invisible in more diverse cohorts.
+
+This demographic logic has profound implications for disease gene discovery. In isolated founder populations, variants that drifted to detectable frequencies during the bottleneck can be linked to phenotypes with statistical power unavailable in large outbred cohorts — because the same haplotype background is shared across thousands of distantly related individuals, effectively providing a natural controlled experiment. The IKBKB E502K variant identified in African-ancestry lupus cohorts [@thorlacius2025] illustrates the complementary insight from the opposite direction: that ancestry-specific rare variants of large effect exist in every human population, but can only be detected when that population is studied with sufficient depth and without the assumption that European reference panels are universal. Taken together, these examples suggest that the most powerful strategy for rare variant discovery is not to treat ancestry as a confound to be corrected away, but as a primary axis of analysis — and demographic history not as noise, but as signal.
 
 ### Connection to biological anthropology
 
-This analysis was motivated by a question from biological anthropology: if observable morphological diversity reflects demographic history, does molecular functional variation follow the same patterns? The answer from this candidate gene analysis is partial — for genes under positive selection (CD36, IFIH1), ancestry-differentiated LoF burden is substantial. For highly constrained genes (COL1A1, RUNX2), purifying selection overrides demographic effects, producing uniform low burden across all populations. The demographic scatter suggests a positive Ne-burden relationship, but its significance awaits genome-wide analysis.
+This candidate panel analysis provides preliminary support for the hypothesis that the demographic forces shaping observable human morphological diversity also leave signatures in the spectrum of rare LoF variants — at least for genes under proposed pathogen-mediated selection. For highly constrained genes (COL1A1, RUNX2), purifying selection appears to limit LoF burden consistently across all populations, potentially outweighing demographic differences. The weak and non-significant demographic scatter suggests that a genome-wide approach, rather than a candidate gene panel, would be necessary to formally test this hypothesis.
+
+### Limitations
+
+Several limitations should be noted. First, genes were selected a priori based on prior hypotheses, introducing ascertainment bias. Conclusions about demographic patterns should therefore be interpreted within this candidate panel and not generalized to the human genome. Second, missense variants were excluded without CADD filtering, potentially missing pathogenic missense variation. Third, Middle Eastern ancestry was excluded from the demographic analysis due to small sample size in gnomAD v4 (AN < 10,000 for most genes). Fourth, the burden metric (ΣAC/max(AN)) is an approximation that does not account for gene length, local mutation rate, or the specific functional impact of individual variants. Fifth, gnomAD is not a random population cohort — it aggregates samples from disease studies and biobanks with variable ascertainment, which may introduce systematic biases in variant detection power across ancestry groups. Sixth, the ancestry groups used here are genetically inferred clusters rather than discrete biological populations, and their composition reflects both genetic structure and ascertainment decisions in gnomAD curation. Seventh, this analysis uses population-level summary statistics from gnomAD and therefore cannot control for cryptic relatedness or fine-scale population structure within ancestry groups. Access to individual-level genotype data, as available in biobanks such as UK Biobank or All of Us, would enable principal component analysis and kinship-based corrections that are standard in association studies but not feasible here.
 
 ---
 
 ## Conclusions
 
-This analysis demonstrates that ancestry-stratified rare LoF variant burden varies substantially across immune genes, particularly CD36 and IFIH1, in patterns consistent with known histories of pathogen-driven selection. Module B (autoimmunity) and Module C (skeletal) genes show uniformly low LoF burden consistent with strong purifying selection. The relationship between historical Ne and mean LoF burden is positive but underpowered at this gene panel scale. Future work should extend this approach to genome-wide data and incorporate CADD-filtered missense variants to recover a more complete picture of functional variation across ancestries.
+Within this candidate gene panel, ancestry-stratified rare LoF variant burden varies substantially across immune genes, particularly *CD36* and *IFIH1*, in patterns consistent with hypotheses of pathogen-mediated selection previously proposed for these genes. Module B (autoimmunity) and Module C (skeletal) genes show consistently low LoF burden consistent with strong purifying selection. The relationship between historical Ne estimates and mean LoF burden is positive but does not reach statistical significance at this gene panel scale. Future work should extend this approach to genome-wide data, incorporate CADD-filtered missense variants, and apply formal population genetic tests of selection to move from descriptive burden analysis to causal inference.
 
 ---
 
